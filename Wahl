@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Bürgermeisterwahl Hambergweg</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body {
+    margin: 0;
+    font-family: system-ui, sans-serif;
+    background: linear-gradient(135deg, #eef2ff, #dbe3ff);
+    color: #222;
+}
+
+header {
+    background: #1f3c88;
+    color: white;
+    padding: 30px;
+    text-align: center;
+}
+
+main {
+    max-width: 900px;
+    margin: 30px auto;
+    padding: 20px;
+}
+
+section {
+    background: white;
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 25px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+}
+
+h2 {
+    margin-top: 0;
+}
+
+button {
+    padding: 10px 18px;
+    border-radius: 8px;
+    border: none;
+    background: #1f3c88;
+    color: white;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #162c63;
+}
+
+button:disabled {
+    background: #999;
+    cursor: not-allowed;
+}
+
+input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+}
+
+.candidate {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    border-bottom: 1px solid #eee;
+}
+
+.candidate:last-child {
+    border-bottom: none;
+}
+
+.bar {
+    height: 22px;
+    background: #1f3c88;
+    border-radius: 6px;
+    margin-bottom: 10px;
+}
+
+footer {
+    text-align: center;
+    font-size: 0.9rem;
+    padding: 20px;
+    color: #555;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <h1>Bürgermeisterwahl Hambergweg</h1>
+    <p>Campingplatz Aufenfeld · reine Spaßwahl</p>
+</header>
+
+<main>
+
+<section>
+    <h2>Hinweis</h2>
+    <p>
+        Diese Wahl ist nur zum Spaß gedacht.  
+        Keine echte Wahl, kein echtes Amt.
+    </p>
+</section>
+
+<section>
+    <h2>Abstimmen</h2>
+    <div id="voteArea"></div>
+</section>
+
+<section>
+    <h2>Ergebnis</h2>
+    <div id="results"></div>
+</section>
+
+<section>
+    <h2>Admin-Bereich</h2>
+
+    <div id="adminLogin">
+        <input type="password" id="adminPassword" placeholder="Admin-Passwort">
+        <button onclick="loginAdmin()">Einloggen</button>
+    </div>
+
+    <div id="adminPanel" style="display:none;">
+        <input type="text" id="newCandidate" placeholder="Neuer Kandidat">
+        <button onclick="addCandidate()">Kandidat hinzufügen</button>
+        <br><br>
+        <button onclick="resetElection()">Wahl zurücksetzen</button>
+    </div>
+</section>
+
+<section>
+    <h2>AGB / Disclaimer</h2>
+    <p>
+        Spaßprojekt ohne rechtliche Bedeutung.  
+        Alle Daten bleiben im Browser.
+    </p>
+</section>
+
+</main>
+
+<footer>
+    Hambergweg · Campingplatz Aufenfeld
+</footer>
+
+<script>
+const ADMIN_PASSWORD = "Bambus123";
+
+let candidates = JSON.parse(localStorage.getItem("candidates")) || [];
+let hasVoted = localStorage.getItem("hasVoted") === "true";
+
+function save() {
+    localStorage.setItem("candidates", JSON.stringify(candidates));
+}
+
+function renderVote() {
+    const area = document.getElementById("voteArea");
+    area.innerHTML = "";
+
+    if (candidates.length === 0) {
+        area.innerHTML = "<p>Noch keine Kandidaten aufgestellt.</p>";
+        return;
+    }
+
+    candidates.forEach((c, i) => {
+        const div = document.createElement("div");
+        div.className = "candidate";
+
+        const btn = document.createElement("button");
+        btn.textContent = hasVoted ? "Bereits abgestimmt" : "Stimme abgeben";
+        btn.disabled = hasVoted;
+        btn.onclick = () => vote(i);
+
+        div.innerHTML = `<strong>${c.name}</strong>`;
+        div.appendChild(btn);
+
+        area.appendChild(div);
+    });
+}
+
+function vote(index) {
+    if (hasVoted) return;
+
+    candidates[index].votes++;
+    hasVoted = true;
+
+    localStorage.setItem("hasVoted", "true");
+    save();
+    renderAll();
+}
+
+function renderResults() {
+    const res = document.getElementById("results");
+    res.innerHTML = "";
+
+    if (candidates.length === 0) {
+        res.innerHTML = "<p>Noch kein Ergebnis.</p>";
+        return;
+    }
+
+    const maxVotes = Math.max(1, ...candidates.map(c => c.votes));
+
+    candidates.forEach(c => {
+        const width = (c.votes / maxVotes) * 100;
+        res.innerHTML += `
+            <p>${c.name}: ${c.votes} Stimmen</p>
+            <div class="bar" style="width:${width}%"></div>
+        `;
+    });
+}
+
+function loginAdmin() {
+    const pw = document.getElementById("adminPassword").value;
+    if (pw === ADMIN_PASSWORD) {
+        document.getElementById("adminLogin").style.display = "none";
+        document.getElementById("adminPanel").style.display = "block";
+    } else {
+        alert("Falsches Passwort");
+    }
+}
+
+function addCandidate() {
+    const name = document.getElementById("newCandidate").value.trim();
+    if (!name) return;
+
+    candidates.push({ name: name, votes: 0 });
+    document.getElementById("newCandidate").value = "";
+    save();
+    renderAll();
+}
+
+function resetElection() {
+    if (!confirm("Wirklich alles zurücksetzen?")) return;
+
+    candidates = [];
+    hasVoted = false;
+    localStorage.clear();
+    renderAll();
+}
+
+function renderAll() {
+    renderVote();
+    renderResults();
+}
+
+renderAll();
+</script>
+
+</body>
+</html>
